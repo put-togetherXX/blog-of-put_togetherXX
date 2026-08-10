@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的题解博客</title>
+    <!-- 引入 marked 渲染 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-image: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
+            /* ① 在这里换你的背景图，直接粘贴图片URL即可 */
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: var(--bg-image) no-repeat center center fixed;
+            background-size: cover;
+            color: #1d1d1f;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 2rem 1rem;
+            transition: background 0.5s ease;
+        }
+
+        /* 苹果风格毛玻璃主容器 */
+        .glass-container {
+            width: 100%;
+            max-width: 800px;
+            backdrop-filter: blur(25px) saturate(180%);
+            -webkit-backdrop-filter: blur(25px) saturate(180%);
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        /* 导航栏 */
+        .navbar {
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            background: rgba(255, 255, 255, 0.3);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
+            font-weight: 600;
+            color: #1d1d1f;
+        }
+
+        .navbar .title {
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .navbar .count {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        /* 列表区域 */
+        .posts-list {
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .post-card {
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            background: rgba(255, 255, 255, 0.35);
+            border-radius: 20px;
+            padding: 1.2rem 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            transition: transform 0.2s ease, background 0.2s ease;
+            cursor: pointer;
+            color: #1d1d1f;
+        }
+
+        .post-card:hover {
+            transform: translateY(-3px);
+            background: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 12px 25px -8px rgba(0, 0, 0, 0.1);
+        }
+
+        .post-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .post-card .meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+
+        /* 详情弹窗（也是毛玻璃） */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal {
+            backdrop-filter: blur(35px) saturate(180%);
+            -webkit-backdrop-filter: blur(35px) saturate(180%);
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 32px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 700px;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 1.8rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #3a3a3c;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.2s;
+        }
+
+        .close-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+
+        .modal .article-title {
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal .article-meta {
+            color: #555;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .modal .article-body {
+            line-height: 1.7;
+            font-size: 1.05rem;
+        }
+
+        /* 暗黑模式适配 */
+        @media (prefers-color-scheme: dark) {
+            body {
+                color: #f5f5f7;
+            }
+            .glass-container, .modal {
+                background: rgba(30, 30, 32, 0.55);
+                border-color: rgba(255, 255, 255, 0.15);
+                color: #f5f5f7;
+            }
+            .navbar {
+                background: rgba(30, 30, 32, 0.4);
+                color: #f5f5f7;
+            }
+            .post-card {
+                background: rgba(40, 40, 42, 0.4);
+                border-color: rgba(255, 255, 255, 0.15);
+                color: #f5f5f7;
+            }
+            .post-card:hover {
+                background: rgba(50, 50, 54, 0.6);
+            }
+            .close-btn {
+                color: #ccc;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="glass-container">
+        <nav class="navbar">
+            <span class="title">📘 我的题解</span>
+            <span class="count" id="post-count">加载中...</span>
+        </nav>
+        <div class="posts-list" id="posts-list">
+            <div class="post-card">正在从 GitHub Issues 读取题目...</div>
+        </div>
+    </div>
+
+    <!-- 文章详情弹窗 -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal">
+            <button class="close-btn" id="close-modal">&times;</button>
+            <div class="article-title" id="modal-title"></div>
+            <div class="article-meta" id="modal-meta"></div>
+            <div class="article-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 配置区域 ====================
+        const GITHUB_OWNER = 'put_togetherXX';      // ② 改成你自己的
+        const GITHUB_REPO = 'blog-of-put_togetherXX';             // ③ 改成你自己的
+        // 使用 Issues 的特定标签来过滤，例如 "blog" 或 "题解"
+        const ISSUE_LABEL = 'blog';                 // 你想展示的标签，也可留空展示所有
+
+        // ==================== 核心逻辑 ====================
+        const postsContainer = document.getElementById('posts-list');
+        const postCount = document.getElementById('post-count');
+        const modalOverlay = document.getElementById('modal-overlay');
+        const modalTitle = document.getElementById('modal-title');
+        const modalMeta = document.getElementById('modal-meta');
+        const modalBody = document.getElementById('modal-body');
+        const closeModal = document.getElementById('close-modal');
+
+        // 获取 Issues 并渲染
+        async function fetchPosts() {
+            try {
+                let url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open`;
+                if (ISSUE_LABEL) url += `&labels=${ISSUE_LABEL}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('请求失败');
+                const issues = await response.json();
+                
+                // 过滤掉真正的 Pull Request（GitHub 中 PR 也是 issue）
+                const posts = issues.filter(issue => !issue.pull_request);
+                
+                postCount.textContent = `${posts.length} 篇文章`;
+                postsContainer.innerHTML = '';
+                
+                if (posts.length === 0) {
+                    postsContainer.innerHTML = '<div class="post-card">还没有题解，去 GitHub Issues 创建第一篇吧 🚀</div>';
+                    return;
+                }
+                
+                posts.forEach(post => {
+                    const card = document.createElement('div');
+                    card.className = 'post-card';
+                    card.innerHTML = `
+                        <h3>${escapeHtml(post.title)}</h3>
+                        <div class="meta">
+                            <span>📅 ${new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
+                            <span>💬 ${post.comments} 评论</span>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => openPost(post));
+                    postsContainer.appendChild(card);
+                });
+            } catch (error) {
+                postsContainer.innerHTML = '<div class="post-card">加载失败，请检查控制台或确认仓库名正确</div>';
+                console.error('获取 Issues 失败:', error);
+            }
+        }
+
+        function openPost(post) {
+            modalTitle.textContent = post.title;
+            modalMeta.textContent = `创建于 ${new Date(post.created_at).toLocaleString('zh-CN')}`;
+            // 使用 marked 渲染 Markdown 正文
+            modalBody.innerHTML = marked.parse(post.body || '暂无内容');
+            modalOverlay.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModalHandler() {
+            modalOverlay.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        closeModal.addEventListener('click', closeModalHandler);
+        modalOverlay.addEventListener('click', (e) => {
+            if (e.target === modalOverlay) closeModalHandler();
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeModalHandler();
+        });
+
+        // 简单的 XSS 防护
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 启动
+        fetchPosts();
+    </script>
+</body>
+</html>
