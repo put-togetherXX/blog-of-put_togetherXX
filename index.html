@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>个人博客</title>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+   <script src="https://lf6-cdn-tos.bytecdntp.com/cdn/expire-100-M/marked/12.0.0/marked.min.js"></script>
     <style>
         :root {
             /* 液态玻璃轻量化参数 */
@@ -475,12 +475,11 @@
 <script>
 // ====================== 【可自定义配置区】 ======================
 const CONFIG = {
-    GITHUB_OWNER: "put_togetherXX",
-    GITHUB_REPO: "blog-of-put_togetherXX",
-    LUOGU_URL: "https://www.luogu.com.cn/user/你的洛谷ID",
-    // 左下角悬浮栏底部提示文字，直接改这里
-    hoverTipText: "鼠标悬停查看更多信息",
-    autoCollapseTime: 8000 // 8秒自动收起，单位毫秒
+  GITHUB_OWNER: "put-togetherXX",
+  GITHUB_REPO: "blog-of-put_togetherXX",
+  LUOGU_URL: "填你的洛谷主页链接",
+  hoverTipText: "鼠标悬停查看更多信息",
+  autoCollapseTime: 8000
 };
 const LABEL_MAP = {
     solution: "题解",
@@ -620,18 +619,33 @@ function escapeHtml(str) {
 
 // 拉取文章列表
 let allIssues = [];
+// 加载文章列表（带GH加速代理）
 async function loadArticles() {
-    try {
-        const res = await fetch(`https://api.github.com/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/issues?per_page=100&state=open`);
-        if (!res.ok) throw new Error();
-        const rawList = await res.json();
-        allIssues = rawList.filter(item => !item.pull_request);
-        renderArticleList();
-    } catch (err) {
-        Object.values(postContainers).forEach(wrap => {
-            wrap.innerHTML = `<div class="post-card glass-panel">加载失败，请切换手机热点访问</div>`;
-        });
+  try {
+    const originUrl = `https://api.github.com/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/issues?per_page=100&state=open`;
+    const proxyUrl = `https://ghproxy.net/${originUrl}`;
+    const res = await fetch(proxyUrl);
+
+    if (!res.ok) {
+      throw new Error(`请求异常 ${res.status}`);
     }
+
+    const rawList = await res.json();
+    allIssues = rawList.filter(item => !item.pull_request);
+    renderArticleList();
+
+  } catch (err) {
+    console.error('文章加载失败:', err);
+    const tip = `<div class="post-card glass-panel">
+      <p>❌ 加载失败</p>
+      <p>1. 请勿直接双击本地html打开</p>
+      <p>2. 使用VS Code Live Server启动本地服务</p>
+      <p>3. 或上传至Pages平台线上访问</p>
+    </div>`;
+    Object.values(postContainers).forEach(wrap => {
+      wrap.innerHTML = tip;
+    });
+  }
 }
 function renderArticleList() {
     const group = { solution: [], daily: [], notes: [] };
@@ -668,29 +682,31 @@ function renderArticleList() {
 
 // 加载作者信息
 async function loadAuthorInfo() {
-    try {
-        const res = await fetch(`https://api.github.com/users/${CONFIG.GITHUB_OWNER}`);
-        const user = await res.json();
-        const avatarUrl = user.avatar_url;
-        const userName = user.name || user.login;
-        const userBio = user.bio || "暂无个人简介";
+  try {
+    const originUrl = `https://api.github.com/users/${CONFIG.GITHUB_OWNER}`;
+    const proxyUrl = `https://ghproxy.net/${originUrl}`;
+    const res = await fetch(proxyUrl);
+    const user = await res.json();
 
-        document.getElementById("authorAvatar").src = avatarUrl;
-        document.getElementById("authorName").innerText = userName;
-        document.getElementById("homeAvatar").src = avatarUrl;
-        document.getElementById("homeName").innerText = userName;
-        document.getElementById("homeBio").innerText = userBio;
-        document.getElementById("linkGithub").href = user.html_url;
-        document.getElementById("linkLuogu").href = CONFIG.LUOGU_URL;
+    const avatarUrl = user.avatar_url;
+    const userName = user.name || user.login;
+    const userBio = user.bio || "暂无个人简介";
 
-        // 同步自定义悬浮提示
-        document.querySelector(".author-sub").innerText = CONFIG.hoverTipText;
-    } catch (err) {
-        document.getElementById("authorName").innerText = CONFIG.GITHUB_OWNER;
-        document.getElementById("homeName").innerText = CONFIG.GITHUB_OWNER;
-    }
+    document.getElementById("authorAvatar").src = avatarUrl;
+    document.getElementById("authorName").innerText = userName;
+    document.getElementById("homeAvatar").src = avatarUrl;
+    document.getElementById("homeName").innerText = userName;
+    document.getElementById("homeBio").innerText = userBio;
+    document.getElementById("linkGithub").href = user.html_url;
+    document.getElementById("linkLuogu").href = CONFIG.LUOGU_URL;
+    document.querySelector(".author-sub").innerText = CONFIG.hoverTipText;
+
+  } catch (err) {
+    console.error('作者信息加载失败:', err);
+    document.getElementById("authorName").innerText = CONFIG.GITHUB_OWNER;
+    document.getElementById("homeName").innerText = CONFIG.GITHUB_OWNER;
+  }
 }
-
 // 页面初始化执行
 updatePathText("home");
 loadAuthorInfo();
