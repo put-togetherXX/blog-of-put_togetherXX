@@ -1,15 +1,24 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="auto">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的题解博客</title>
-    <!-- 引入 marked 渲染 Markdown -->
+    <title>个人博客</title>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
+            /* 液态玻璃轻量化参数 */
+            --glass-blur: 6px;
+            --glass-saturate: 120%;
+            --glass-radius: 22px;
+            --gap-panel: 16px;
+            --edge-highlight: rgba(255, 255, 255, 0.55);
+            --edge-dark: rgba(255, 255, 255, 0.15);
+            --shadow-light: 0 0 10px rgba(255, 255, 255, 0.18);
             --bg-image: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1950&q=80');
-            /* ① 在这里换你的背景图，直接粘贴图片URL即可 */
+            --body-padding: 24px;
+            --content-padding: 32px;
+            --auto-collapse-delay: 8000; /* 8秒自动收起 */
         }
 
         * {
@@ -22,508 +31,671 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             background: var(--bg-image) no-repeat center center fixed;
             background-size: cover;
-            color: #1d1d1f;
             min-height: 100vh;
+            padding: var(--body-padding);
             display: flex;
+            gap: 24px;
+            transition: color 0.3s ease;
+            overflow-x: hidden;
+        }
+
+        /* 深色浅色主题变量 */
+        html[data-theme="dark"] {
+            --text-color: #f5f5f7;
+            --glass-bg: rgba(22, 22, 26, 0.45);
+            --border-top: rgba(255,255,255,0.2);
+            --border-rest: rgba(255,255,255,0.06);
+        }
+        html[data-theme="light"] {
+            --text-color: #1d1d1f;
+            --glass-bg: rgba(255, 255, 255, 0.32);
+            --border-top: rgba(255,255,255,0.6);
+            --border-rest: rgba(255,255,255,0.2);
+        }
+        html[data-theme="auto"] {
+            --text-color: #1d1d1f;
+            --glass-bg: rgba(255, 255, 255, 0.32);
+            --border-top: rgba(255,255,255,0.6);
+            --border-rest: rgba(255,255,255,0.2);
+        }
+        @media (prefers-color-scheme: dark) {
+            html[data-theme="auto"] {
+                --text-color: #f5f5f7;
+                --glass-bg: rgba(22, 22, 26, 0.45);
+                --border-top: rgba(255,255,255,0.2);
+                --border-rest: rgba(255,255,255,0.06);
+            }
+        }
+        body {
+            color: var(--text-color);
+        }
+
+        /* 玻璃基础样式 + 入场动画 */
+        .glass-panel {
+            backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+            -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+            background: var(--glass-bg);
+            border-radius: var(--glass-radius);
+            border-top: 1px solid var(--border-top);
+            border-left: 1px solid var(--border-top);
+            border-right: 1px solid var(--border-rest);
+            border-bottom: 1px solid var(--border-rest);
+            box-shadow: var(--shadow-light), 0 6px 20px rgba(0,0,0,0.06);
+
+            opacity: 0;
+            transform: translateY(12px);
+            animation: panelFadeIn 0.6s ease-out forwards;
+        }
+        @keyframes panelFadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .sidebar-nav { animation-delay: 0.1s; }
+        .path-box { animation-delay: 0.2s; }
+        .main-right { animation-delay: 0.3s; }
+        .author-bar { animation-delay: 0.4s; }
+
+        /* ========== 左侧侧边栏容器 ========== */
+        .sidebar-wrap {
+            width: 270px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap-panel);
+            transition: all 0.5s cubic-bezier(0.4,0,0.2,1);
+            position: relative;
+        }
+        /* 完全收起状态 */
+        .sidebar-wrap.collapsed {
+            width: 0;
+            opacity: 0;
+            overflow: visible;
+        }
+        /* 收起后悬浮发光按钮 */
+        .sidebar-trigger-dot {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
             justify-content: center;
-            align-items: flex-start;
-            padding: 2rem 1rem;
-            transition: background 0.5s ease;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+            background: var(--glass-bg);
+            box-shadow: 0 0 12px 3px rgba(255,255,255,0.4);
+            z-index: 999;
+            animation: pulseGlow 2s infinite ease-in-out;
+        }
+        @keyframes pulseGlow {
+            0%,100% { box-shadow: 0 0 12px 3px rgba(255,255,255,0.4); }
+            50% { box-shadow: 0 0 20px 6px rgba(255,255,255,0.6); }
+        }
+        .sidebar-wrap.collapsed + .sidebar-trigger-dot {
+            display: flex;
         }
 
-        /* 苹果风格毛玻璃主容器 */
-        .glass-container {
-            width: 100%;
-            max-width: 800px;
-            backdrop-filter: blur(25px) saturate(180%);
-            -webkit-backdrop-filter: blur(25px) saturate(180%);
-            background: rgba(255, 255, 255, 0.5);
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
-            overflow: hidden; /* 保持内部整洁 */
+        /* 顶部导航面板 */
+        .sidebar-nav {
+            padding: 20px;
+            position: relative;
         }
-
-        /* 导航栏 */
-        .navbar {
-            backdrop-filter: blur(30px);
-            -webkit-backdrop-filter: blur(30px);
-            background: rgba(255, 255, 255, 0.3);
-            padding: 1rem 2rem;
+        .collapse-btn {
+            position: absolute;
+            top: 14px;
+            right: 16px;
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255,255,255,0.25);
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--border-top);
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-wrap.collapsed .collapse-btn {
+            transform: rotate(180deg);
+        }
+        .blog-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 16px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-            font-weight: 600;
-            color: #1d1d1f;
         }
-
-        .navbar .title {
-            font-size: 1.5rem;
-            letter-spacing: -0.5px;
-        }
-
-        .navbar .count {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-
-        /* 列表区域 */
-        .posts-list {
-            padding: 1.5rem;
+        /* 单个主题切换按钮 太阳月亮 */
+        .theme-toggle-single {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 1px solid var(--border-top);
+            background: rgba(255,255,255,0.2);
             display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .post-card {
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            background: rgba(255, 255, 255, 0.35);
-            border-radius: 20px;
-            padding: 1.2rem 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            transition: transform 0.2s ease, background 0.2s ease;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            color: #1d1d1f;
+            font-size: 14px;
         }
-
-        .post-card:hover {
-            transform: translateY(-3px);
-            background: rgba(255, 255, 255, 0.5);
-            box-shadow: 0 12px 25px -8px rgba(0, 0, 0, 0.1);
-        }
-
-        .post-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 0.4rem;
-        }
-
-        .post-card .meta {
+        .nav-links {
             display: flex;
-            gap: 1rem;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .nav-links a {
+            color: inherit;
+            text-decoration: none;
+            opacity: 0.75;
+            padding: 5px 12px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+        .nav-links a:hover,
+        .nav-links a.active {
+            opacity: 1;
+            background: rgba(255,255,255,0.35);
+        }
+
+        /* 分割线 */
+        .divider-line {
+            width: 80%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border-top), transparent);
+            margin: 0 auto;
+        }
+
+        /* 路径面板 收起/展开样式区分 */
+        .path-box {
+            padding: 16px 20px;
+            font-family: 'SF Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 500;
+            line-height: 1.5;
+            white-space: pre;
+            transition: font-size 0.3s;
+        }
+
+        /* ========== 右侧主内容 ========== */
+        .main-right {
+            flex: 1;
+            min-width: 0;
+            padding: var(--content-padding);
+        }
+        .content-wrap {
+            width: 100%;
+            height: 100%;
+        }
+        .content {
+            display: none;
+            opacity: 0;
+            transform: translateY(8px);
+            transition: all 0.4s ease;
+        }
+        .content.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 首页个人卡片 */
+        .home-card .avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--border-top);
+            margin-bottom: 16px;
+        }
+        .home-card h2 {
+            font-size: 2rem;
+            margin-bottom: 8px;
+        }
+        .home-card .bio {
+            line-height: 1.7;
+            font-size: 1.05rem;
+            opacity: 0.9;
+        }
+        .external-links {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .external-links a {
+            color: inherit;
+            text-decoration: none;
+            padding: 8px 18px;
+            border-radius: 99px;
+            background: rgba(255,255,255,0.25);
+            border: 1px solid var(--border-top);
+            transition: 0.2s;
+        }
+        .external-links a:hover {
+            background: rgba(255,255,255,0.45);
+        }
+
+        /* 文章列表卡片 */
+        .post-card {
+            padding: 16px 20px;
+            margin-bottom: 14px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .post-card:hover {
+            transform: translateY(-2px);
+            background: rgba(255,255,255,0.4);
+        }
+        .post-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 6px;
+        }
+        .post-card .meta {
             font-size: 0.85rem;
             opacity: 0.7;
+            display: flex;
+            gap: 16px;
         }
 
-        /* 文章详情弹窗（也是毛玻璃） */
+        /* 弹窗 */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.3);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            justify-content: center;
-            align-items: center;
+            inset: 0;
+            background: rgba(0,0,0,0.2);
+            backdrop-filter: blur(3px);
             z-index: 1000;
-            padding: 1rem;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
         }
-
         .modal {
-            backdrop-filter: blur(35px) saturate(180%);
-            -webkit-backdrop-filter: blur(35px) saturate(180%);
-            background: rgba(255, 255, 255, 0.7);
-            border-radius: 32px;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
             width: 100%;
-            max-width: 700px;
+            max-width: 760px;
             max-height: 85vh;
             overflow-y: auto;
-            padding: 2rem;
+            padding: 30px;
             position: relative;
         }
-
         .close-btn {
             position: absolute;
-            top: 1rem;
-            right: 1.5rem;
-            font-size: 1.8rem;
-            background: none;
+            top: 16px;
+            right: 20px;
             border: none;
+            background: transparent;
+            font-size: 28px;
             cursor: pointer;
-            color: #3a3a3c;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            transition: background 0.2s;
+            color: inherit;
         }
 
-        .close-btn:hover {
-            background: rgba(0,0,0,0.05);
-        }
-
-        .modal .article-title {
-            font-size: 1.8rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .modal .article-meta {
-            color: #555;
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-        }
-
-        .modal .article-body {
-            line-height: 1.7;
-            font-size: 1.05rem;
-        }
-
-        /* ========== 左下角作者信息栏 ========== */
+        /* ========== 左下角作者悬浮栏（自定义提示文字） ========== */
         .author-bar {
             position: fixed;
             left: 0;
-            bottom: 2rem;
+            bottom: 40px;
+            border-radius: 0 28px 28px 0;
+            padding: 14px 20px 14px 12px;
+            z-index: 998;
+            cursor: pointer;
+            width: 120px;
+            overflow: hidden;
+            transition: width 0.3s ease, background 0.3s ease;
+        }
+        .author-bar:hover {
+            width: 280px;
+            background: rgba(255,255,255,0.45);
+            box-shadow: 0 0 16px rgba(255,255,255,0.25);
+        }
+        .author-inner {
             display: flex;
             align-items: center;
-            gap: 0.8rem;
-            padding: 0.8rem 1.5rem 0.8rem 1rem;
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.4);
-            border-left: none; /* 左侧贴边无边框 */
-            border-radius: 0 30px 30px 0; /* 右侧大圆角 */
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-            z-index: 999;
-            transition: transform 0.2s, background 0.2s;
+            gap: 12px;
+            white-space: nowrap;
         }
-
-        .author-bar:hover {
-            transform: translateX(4px);
-            background: rgba(255, 255, 255, 0.35);
-        }
-
         .author-bar .avatar {
             width: 42px;
             height: 42px;
             border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid rgba(255, 255, 255, 0.6);
+            border: 2px solid var(--border-top);
+            flex-shrink: 0;
         }
-
-        .author-bar .info {
+        .author-info {
             display: flex;
             flex-direction: column;
-            line-height: 1.3;
         }
-
-        .author-bar .name {
+        .author-name {
             font-weight: 600;
-            font-size: 0.95rem;
-            color: #1d1d1f;
         }
-
-        .author-bar .about-link {
+        .author-sub {
             font-size: 0.8rem;
-            color: #007aff;
-            text-decoration: none;
-            cursor: pointer;
-            transition: color 0.2s;
+            opacity: 0.7;
         }
 
-        .author-bar .about-link:hover {
-            color: #0056b3;
-            text-decoration: underline;
-        }
-
-        /* 作者介绍弹窗（结构与文章弹窗类似，但独立） */
-        #author-modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.3);
-            backdrop-filter: blur(5px);
-            -webkit-backdrop-filter: blur(5px);
-            justify-content: center;
-            align-items: center;
-            z-index: 1001;
-            padding: 1rem;
-        }
-
-        /* 复用 .modal 样式，但可以额外定制 */
-        #author-modal .author-detail {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-
-        #author-modal .avatar-large {
-            width: 100px;
-            height: 100px;
-            border-radius: 50%;
-            margin-bottom: 1rem;
-            border: 3px solid rgba(255,255,255,0.6);
-        }
-
-        /* 暗黑模式适配 */
-        @media (prefers-color-scheme: dark) {
+        /* 移动端适配 */
+        @media (max-width: 900px) {
             body {
-                color: #f5f5f7;
+                flex-direction: column;
             }
-            .glass-container, .modal, #author-modal {
-                background: rgba(30, 30, 32, 0.55);
-                border-color: rgba(255, 255, 255, 0.15);
-                color: #f5f5f7;
+            .sidebar-wrap {
+                width: 100%;
             }
-            .navbar {
-                background: rgba(30, 30, 32, 0.4);
-                color: #f5f5f7;
+            .sidebar-wrap.collapsed {
+                width: 100%;
             }
-            .post-card {
-                background: rgba(40, 40, 42, 0.4);
-                border-color: rgba(255, 255, 255, 0.15);
-                color: #f5f5f7;
-            }
-            .post-card:hover {
-                background: rgba(50, 50, 54, 0.6);
-            }
-            .close-btn {
-                color: #ccc;
-            }
-            .author-bar {
-                background: rgba(30, 30, 32, 0.45);
-                border-color: rgba(255, 255, 255, 0.15);
-            }
-            .author-bar .name {
-                color: #f5f5f7;
-            }
-            .author-bar .about-link {
-                color: #0a84ff;
-            }
-            #author-modal .modal {
-                background: rgba(30, 30, 32, 0.55);
-            }
-        }
-
-        /* 移动端适配：防止作者栏遮挡内容，可适当缩小 */
-        @media (max-width: 600px) {
-            .author-bar {
-                padding: 0.6rem 1rem 0.6rem 0.8rem;
-                gap: 0.5rem;
-                bottom: 1rem;
-            }
-            .author-bar .avatar {
-                width: 34px;
-                height: 34px;
-            }
-            .author-bar .name {
-                font-size: 0.85rem;
+            .sidebar-trigger-dot {
+                top: 16px;
+                left: 16px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="glass-container">
-        <nav class="navbar">
-            <span class="title">📘 我的题解</span>
-            <span class="count" id="post-count">加载中...</span>
-        </nav>
-        <div class="posts-list" id="posts-list">
-            <div class="post-card">正在从 GitHub Issues 读取题目...</div>
+    <!-- 左侧侧边栏主体 -->
+    <div class="sidebar-wrap" id="sidebarWrap">
+        <div class="glass-panel sidebar-nav">
+            <div class="collapse-btn" id="collapseSidebar">◀</div>
+            <div class="blog-title">
+                📘 博客
+                <div class="theme-toggle-single" id="themeSingleBtn">🌙</div>
+            </div>
+            <div class="nav-links">
+                <a class="active" data-tab="home">自我简介</a>
+                <a data-tab="solution">题解</a>
+                <a data-tab="daily">刷题历程</a>
+                <a data-tab="notes">杂事</a>
+            </div>
         </div>
+
+        <div class="divider-line"></div>
+
+        <div class="glass-panel path-box" id="pathBox">博客 → 自我简介</div>
     </div>
 
-    <!-- 文章详情弹窗 -->
-    <div class="modal-overlay" id="modal-overlay">
-        <div class="modal">
-            <button class="close-btn" id="close-modal">&times;</button>
-            <div class="article-title" id="modal-title"></div>
-            <div class="article-meta" id="modal-meta"></div>
-            <div class="article-body" id="modal-body"></div>
-        </div>
-    </div>
+    <!-- 收起后发光激活按钮 -->
+    <div class="sidebar-trigger-dot" id="triggerDot">)</div>
 
-    <!-- 左下角作者信息栏 -->
-    <div class="author-bar" id="author-bar">
-        <img class="avatar" id="author-avatar" src="" alt="avatar">
-        <div class="info">
-            <span class="name" id="author-name">加载中...</span>
-            <a class="about-link" id="about-link">关于我</a>
-        </div>
-    </div>
-
-    <!-- 作者介绍弹窗 -->
-    <div class="modal-overlay" id="author-modal-overlay">
-        <div class="modal" id="author-modal">
-            <button class="close-btn" id="close-author-modal">&times;</button>
-            <div class="author-detail">
-                <img class="avatar-large" id="author-modal-avatar" src="" alt="avatar">
-                <h2 class="article-title" id="author-modal-name"></h2>
-                <div class="article-body" id="author-modal-bio"></div>
+    <!-- 右侧主内容区 -->
+    <div class="glass-panel main-right">
+        <div class="content-wrap">
+            <div class="content active" id="tab-home">
+                <div class="home-card">
+                    <img class="avatar" id="homeAvatar" alt="头像">
+                    <h2 id="homeName"></h2>
+                    <p class="bio" id="homeBio"></p>
+                    <div class="external-links">
+                        <a id="linkGithub" target="_blank">GitHub</a>
+                        <a id="linkLuogu" target="_blank">洛谷主页</a>
+                    </div>
+                </div>
+            </div>
+            <div class="content" id="tab-solution">
+                <div id="postsSolution"></div>
+            </div>
+            <div class="content" id="tab-daily">
+                <div id="postsDaily"></div>
+            </div>
+            <div class="content" id="tab-notes">
+                <div id="postsNotes"></div>
             </div>
         </div>
     </div>
 
-    <script>
-        // ==================== 配置区域 ====================
-        const GITHUB_OWNER = 'put_togetherXX';      // ② 改成你自己的
-        const GITHUB_REPO = 'blog-of-put_togetherXX';             // ③ 改成你自己的
-        // 使用 Issues 的特定标签来过滤，例如 "blog" 或 "题解"
-        const ISSUE_LABEL = 'blog';                 // 你想展示的标签，也可留空展示所有
+    <!-- 文章弹窗 -->
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="glass-panel modal">
+            <button class="close-btn" id="closeModal">&times;</button>
+            <h2 id="modalTitle"></h2>
+            <div class="article-meta" id="modalMeta" style="opacity:0.7;margin:12px 0 24px;"></div>
+            <div class="article-body" id="modalBody"></div>
+        </div>
+    </div>
 
-        // ==================== 核心逻辑 ====================
-        const postsContainer = document.getElementById('posts-list');
-        const postCount = document.getElementById('post-count');
-        const modalOverlay = document.getElementById('modal-overlay');
-        const modalTitle = document.getElementById('modal-title');
-        const modalMeta = document.getElementById('modal-meta');
-        const modalBody = document.getElementById('modal-body');
-        const closeModal = document.getElementById('close-modal');
+    <!-- 左下角作者悬浮栏（可自定义下方小字） -->
+    <div class="glass-panel author-bar" id="authorBar">
+        <div class="author-inner">
+            <img class="avatar" id="authorAvatar" alt="头像">
+            <div class="author-info">
+                <div class="author-name" id="authorName">加载中</div>
+                <!-- 这里直接修改引号内文字即可自定义 -->
+                <div class="author-sub">鼠标悬停查看更多信息</div>
+            </div>
+        </div>
+    </div>
 
-        // 获取 Issues 并渲染
-        async function fetchPosts() {
-            try {
-                let url = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/issues?state=open`;
-                if (ISSUE_LABEL) url += `&labels=${ISSUE_LABEL}`;
-                
-                const response = await fetch(url);
-                if (!response.ok) throw new Error('请求失败');
-                const issues = await response.json();
-                
-                // 过滤掉真正的 Pull Request（GitHub 中 PR 也是 issue）
-                const posts = issues.filter(issue => !issue.pull_request);
-                
-                postCount.textContent = `${posts.length} 篇文章`;
-                postsContainer.innerHTML = '';
-                
-                if (posts.length === 0) {
-                    postsContainer.innerHTML = '<div class="post-card">还没有题解，去 GitHub Issues 创建第一篇吧 🚀</div>';
-                    return;
-                }
-                
-                posts.forEach(post => {
-                    const card = document.createElement('div');
-                    card.className = 'post-card';
-                    card.innerHTML = `
-                        <h3>${escapeHtml(post.title)}</h3>
-                        <div class="meta">
-                            <span>📅 ${new Date(post.created_at).toLocaleDateString('zh-CN')}</span>
-                            <span>💬 ${post.comments} 评论</span>
-                        </div>
-                    `;
-                    card.addEventListener('click', () => openPost(post));
-                    postsContainer.appendChild(card);
-                });
-            } catch (error) {
-                postsContainer.innerHTML = '<div class="post-card">加载失败，请检查控制台或确认仓库名正确</div>';
-                console.error('获取 Issues 失败:', error);
+<script>
+// ====================== 【可自定义配置区】 ======================
+const CONFIG = {
+    GITHUB_OWNER: "put_togetherXX",
+    GITHUB_REPO: "blog-of-put_togetherXX",
+    LUOGU_URL: "https://www.luogu.com.cn/user/你的洛谷ID",
+    // 左下角悬浮栏底部提示文字，直接改这里
+    hoverTipText: "鼠标悬停查看更多信息",
+    autoCollapseTime: 8000 // 8秒自动收起，单位毫秒
+};
+const LABEL_MAP = {
+    solution: "题解",
+    daily: "刷题历程",
+    notes: "杂事"
+};
+// ==============================================================
+
+// DOM元素
+const sidebarWrap = document.getElementById("sidebarWrap");
+const collapseBtn = document.getElementById("collapseSidebar");
+const triggerDot = document.getElementById("triggerDot");
+const themeSingleBtn = document.getElementById("themeSingleBtn");
+const pathBox = document.getElementById("pathBox");
+const navLinks = document.querySelectorAll(".nav-links a");
+const tabContents = {
+    home: document.getElementById("tab-home"),
+    solution: document.getElementById("tab-solution"),
+    daily: document.getElementById("tab-daily"),
+    notes: document.getElementById("tab-notes")
+};
+const postContainers = {
+    solution: document.getElementById("postsSolution"),
+    daily: document.getElementById("postsDaily"),
+    notes: document.getElementById("postsNotes")
+};
+const modalOverlay = document.getElementById("modalOverlay");
+const modalTitle = document.getElementById("modalTitle");
+const modalMeta = document.getElementById("modalMeta");
+const modalBody = document.getElementById("modalBody");
+const closeModal = document.getElementById("closeModal");
+
+// 主题状态
+const htmlRoot = document.documentElement;
+let currentTheme = localStorage.getItem("blog-theme") || "auto";
+let autoCollapseTimer = null;
+
+// 初始化主题单按钮
+function initTheme() {
+    updateThemeIcon(currentTheme);
+    htmlRoot.setAttribute("data-theme", currentTheme);
+}
+function toggleSingleTheme() {
+    const order = ["light", "dark", "auto"];
+    let idx = order.indexOf(currentTheme);
+    idx = (idx + 1) % 3;
+    currentTheme = order[idx];
+    localStorage.setItem("blog-theme", currentTheme);
+    htmlRoot.setAttribute("data-theme", currentTheme);
+    updateThemeIcon(currentTheme);
+}
+function updateThemeIcon(mode) {
+    if (mode === "dark") themeSingleBtn.textContent = "☀️";
+    else themeSingleBtn.textContent = "🌙";
+}
+themeSingleBtn.addEventListener("click", toggleSingleTheme);
+initTheme();
+
+// 侧边栏自动计时收起
+function resetAutoCollapseTimer() {
+    clearTimeout(autoCollapseTimer);
+    autoCollapseTimer = setTimeout(() => {
+        if (!sidebarWrap.classList.contains("collapsed")) {
+            collapseSidebar();
+        }
+    }, CONFIG.autoCollapseTime);
+}
+
+// 侧边栏收起展开核心逻辑
+function collapseSidebar() {
+    sidebarWrap.classList.add("collapsed");
+    collapseBtn.textContent = "▶";
+    clearTimeout(autoCollapseTimer);
+}
+function expandSidebar() {
+    sidebarWrap.classList.remove("collapsed");
+    collapseBtn.textContent = "◀";
+    resetAutoCollapseTimer();
+}
+collapseBtn.addEventListener("click", expandSidebar);
+triggerDot.addEventListener("click", expandSidebar);
+// 鼠标移入侧边栏重置倒计时
+sidebarWrap.addEventListener("mouseenter", resetAutoCollapseTimer);
+
+// 更新路径文本
+function updatePathText(tabKey) {
+    const nameMap = {
+        home: "自我简介",
+        solution: "题解",
+        daily: "刷题历程",
+        notes: "杂事"
+    };
+    pathBox.textContent = `博客 → ${nameMap[tabKey]}`;
+}
+
+// 导航切换 + 内容展开动画
+navLinks.forEach(link => {
+    link.addEventListener("click", (e) => {
+        e.preventDefault();
+        const targetTab = link.dataset.tab;
+        // 激活导航
+        navLinks.forEach(l => l.classList.remove("active"));
+        link.classList.add("active");
+        // 内容切换带动画
+        Object.values(tabContents).forEach(el => {
+            el.classList.remove("active");
+        });
+        tabContents[targetTab].classList.add("active");
+        updatePathText(targetTab);
+        // 切换页面重置8秒倒计时
+        resetAutoCollapseTimer();
+    });
+});
+
+// 弹窗控制
+function openPostModal(post) {
+    modalTitle.innerText = post.title;
+    modalMeta.innerText = `发布于 ${new Date(post.created_at).toLocaleString()}`;
+    modalBody.innerHTML = marked.parse(post.body || "");
+    modalOverlay.style.display = "flex";
+    document.body.style.overflow = "hidden";
+}
+function closePostModal() {
+    modalOverlay.style.display = "none";
+    document.body.style.overflow = "";
+}
+closeModal.addEventListener("click", closePostModal);
+modalOverlay.addEventListener("click", e => e.target === modalOverlay && closePostModal());
+document.addEventListener("keydown", e => e.key === "Escape" && closePostModal());
+
+// HTML转义
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// 拉取文章列表
+let allIssues = [];
+async function loadArticles() {
+    try {
+        const res = await fetch(`https://api.github.com/repos/${CONFIG.GITHUB_OWNER}/${CONFIG.GITHUB_REPO}/issues?per_page=100&state=open`);
+        if (!res.ok) throw new Error();
+        const rawList = await res.json();
+        allIssues = rawList.filter(item => !item.pull_request);
+        renderArticleList();
+    } catch (err) {
+        Object.values(postContainers).forEach(wrap => {
+            wrap.innerHTML = `<div class="post-card glass-panel">加载失败，请切换手机热点访问</div>`;
+        });
+    }
+}
+function renderArticleList() {
+    const group = { solution: [], daily: [], notes: [] };
+    allIssues.forEach(iss => {
+        const 标签 = iss.labels.map(tag => tag.name);
+        for (const key in LABEL_MAP) {
+            if (标签.includes(key)) {
+                group[key].push(iss);
+                break;
             }
         }
-
-        function openPost(post) {
-            modalTitle.textContent = post.title;
-            modalMeta.textContent = `创建于 ${new Date(post.created_at).toLocaleString('zh-CN')}`;
-            // 使用 marked 渲染 Markdown 正文
-            modalBody.innerHTML = marked.parse(post.body || '暂无内容');
-            modalOverlay.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
+    });
+    for (const key in group) {
+        const arr = group[key];
+        if (!arr.length) {
+            postContainers[key].innerHTML = `<div class="post-card glass-panel">暂无${LABEL_MAP[key]}内容</div>`;
+            continue;
         }
-
-        function closeModalHandler() {
-            modalOverlay.style.display = 'none';
-            document.body.style.overflow = '';
-        }
-
-        closeModal.addEventListener('click', closeModalHandler);
-        modalOverlay.addEventListener('click', (e) => {
-            if (e.target === modalOverlay) closeModalHandler();
+        arr.forEach(post => {
+            const card = document.createElement("div");
+            card.className = "post-card glass-panel";
+            card.innerHTML = `
+                <h3>${escapeHtml(post.title)}</h3>
+                <div class="meta">
+                    <span>📅 ${new Date(post.created_at).toLocaleDateString()}</span>
+                    <span>💬 ${post.comments} 评论</span>
+                </div>
+            `;
+            card.addEventListener("click", () => openPostModal(post));
+            postContainers[key].appendChild(card);
         });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeModalHandler();
-        });
+    }
+}
 
-        // 简单的 XSS 防护
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+// 加载作者信息
+async function loadAuthorInfo() {
+    try {
+        const res = await fetch(`https://api.github.com/users/${CONFIG.GITHUB_OWNER}`);
+        const user = await res.json();
+        const avatarUrl = user.avatar_url;
+        const userName = user.name || user.login;
+        const userBio = user.bio || "暂无个人简介";
 
-        // ========== 作者信息相关 ==========
-        const authorBar = document.getElementById('author-bar');
-        const authorAvatar = document.getElementById('author-avatar');
-        const authorName = document.getElementById('author-name');
-        const aboutLink = document.getElementById('about-link');
+        document.getElementById("authorAvatar").src = avatarUrl;
+        document.getElementById("authorName").innerText = userName;
+        document.getElementById("homeAvatar").src = avatarUrl;
+        document.getElementById("homeName").innerText = userName;
+        document.getElementById("homeBio").innerText = userBio;
+        document.getElementById("linkGithub").href = user.html_url;
+        document.getElementById("linkLuogu").href = CONFIG.LUOGU_URL;
 
-        const authorModalOverlay = document.getElementById('author-modal-overlay');
-        const authorModalAvatar = document.getElementById('author-modal-avatar');
-        const authorModalName = document.getElementById('author-modal-name');
-        const authorModalBio = document.getElementById('author-modal-bio');
-        const closeAuthorModal = document.getElementById('close-author-modal');
+        // 同步自定义悬浮提示
+        document.querySelector(".author-sub").innerText = CONFIG.hoverTipText;
+    } catch (err) {
+        document.getElementById("authorName").innerText = CONFIG.GITHUB_OWNER;
+        document.getElementById("homeName").innerText = CONFIG.GITHUB_OWNER;
+    }
+}
 
-        // 获取 GitHub 用户信息
-        async function fetchAuthorInfo() {
-            try {
-                const res = await fetch(`https://api.github.com/users/${GITHUB_OWNER}`);
-                if (!res.ok) throw new Error('获取用户信息失败');
-                const user = await res.json();
-                // 更新左下角
-                authorAvatar.src = user.avatar_url;
-                authorName.textContent = user.name || user.login;
-                // 存储介绍信息备用
-                window._authorBio = user.bio || '这个人很懒，还没有写个人介绍。';
-                window._authorLogin = user.login;
-                window._authorAvatar = user.avatar_url;
-                window._authorName = user.name || user.login;
-
-                // 更新作者弹窗的内容（弹窗打开时会再填一次，也可以提前设置）
-            } catch (error) {
-                console.error('获取作者信息失败:', error);
-                // 降级显示
-                authorAvatar.src = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
-                authorName.textContent = GITHUB_OWNER;
-                window._authorBio = '作者介绍暂无，请前往 GitHub 主页查看。';
-                window._authorLogin = GITHUB_OWNER;
-                window._authorAvatar = 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png';
-                window._authorName = GITHUB_OWNER;
-            }
-        }
-
-        // 点击“关于我”打开作者介绍弹窗
-        aboutLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            // 填充作者介绍弹窗
-            authorModalAvatar.src = window._authorAvatar || '';
-            authorModalName.textContent = window._authorName || '';
-            authorModalBio.textContent = window._authorBio || '';
-            authorModalOverlay.style.display = 'flex';
-            document.body.style.overflow = 'hidden';
-        });
-
-        // 关闭作者弹窗
-        closeAuthorModal.addEventListener('click', () => {
-            authorModalOverlay.style.display = 'none';
-            document.body.style.overflow = '';
-        });
-        authorModalOverlay.addEventListener('click', (e) => {
-            if (e.target === authorModalOverlay) {
-                authorModalOverlay.style.display = 'none';
-                document.body.style.overflow = '';
-            }
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                authorModalOverlay.style.display = 'none';
-                document.body.style.overflow = '';
-            }
-        });
-
-        // 启动：先获取作者信息，再获取文章
-        fetchAuthorInfo();
-        fetchPosts();
-    </script>
+// 页面初始化执行
+updatePathText("home");
+loadAuthorInfo();
+loadArticles();
+resetAutoCollapseTimer();
+</script>
 </body>
 </html>
